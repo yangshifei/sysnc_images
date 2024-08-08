@@ -1,0 +1,45 @@
+name: Mirror Docker Image to Aliyun
+
+on:
+  workflow_dispatch:
+    inputs:
+      dockerhub_image:
+        description: 'Docker Hub image to pull'
+        required: true
+        default: 'my-dockerhub-repo/my-image:latest'
+      aliyun_image:
+        description: 'Aliyun image to push'
+        required: true
+        default: 'registry.cn-beijing.aliyuncs.com/yangsf/my-image:latest' 
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+     
+        run: |
+          echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            
+      - name: Pull Docker image from Docker Hub
+        run: docker pull ${{ github.event.inputs.dockerhub_image }}
+
+      - name: Tag Docker image for Aliyun
+        run: docker tag ${{ github.event.inputs.dockerhub_image }} ${{ github.event.inputs.aliyun_image }}
+      - name: Log in to Aliyun Docker Registry
+        env:
+          ALIYUN_USERNAME: ${{ secrets.ALIYUN_USERNAME }}
+          ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+        run: |
+          echo "$ALIYUN_PASSWORD" | docker login --username "$ALIYUN_USERNAME" registry.cn-beijing.aliyuncs.com --password-stdin
+
+      - name: Push Docker image to Aliyun
+        run: docker push ${{ github.event.inputs.aliyun_image }}
